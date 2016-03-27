@@ -1,13 +1,16 @@
+/*
+Serial box by Kellan Dubbels. March 2016.
+*/
+
 //includes
 #include <Wire.h>
 #include <Adafruit_RGBLCDShield.h>
 #include <utility/Adafruit_MCP23017.h>
 
 //defines
-
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
-// These #defines make it easy to set the backlight color
+// defines for RGB backlight color
 #define RED 0x1
 #define YELLOW 0x3
 #define GREEN 0x2
@@ -16,27 +19,26 @@ Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 #define VIOLET 0x5
 #define WHITE 0x7
 
-boolean printDebug = true;
+//variables
+boolean printDebug = true;       // begin with debug enabled
 boolean printLineOne = true;
 boolean printLineTwo = false;
-String inputString = "";         // a string to hold incoming data
-String lineOne = "Waiting";
-String lineTwo = "Waiting";
-boolean writeDisplay = true;
+String inputString = "";         // a string to hold incoming data from serial port 2
+String lineOne = "Waiting";      // initialize first display line
+String lineTwo = "Waiting";      // initialize second display line
+boolean writeDisplay = true;     // initiate first display write
 boolean prevField = false; boolean nextField = false; boolean prevCard = false; boolean nextCard = false;
-boolean toggleDebug; boolean buttonPressed;
-
-int offset = 0;
-int displayColumns = 16;
-
-
-//variables
+boolean toggleDebug; 
+boolean buttonPressed;           // interface flag set of button event
+int offset = 0;                  // initial offset to display data from
+int displayColumns = 16;         // number of columns to display per row
 
 //setup
 
 void setup() {
-  // initialize serial console:
+  // initialize serial console (this is for debugging with a computer)
   Serial.begin(9600);
+  // initialize the serial input (this is the data we are interested in)
   Serial2.begin(9600);
   // reserve 1024 bytes for the inputString:
   inputString.reserve(1024);
@@ -46,45 +48,35 @@ void setup() {
   lcd.begin(16, 2);
 }
 
-
-//loop
+//main loop
 void loop() {
 int inputStringLength = inputString.length();
 int lastColumn = offset + displayColumns;
 
-  //scan the buttons for input
+  //scan the buttons for input, set flag on input
   uint8_t buttons = lcd.readButtons();
   if (buttons) {
+    // rewind one field
+    if (buttons & BUTTON_UP) {prevField = true;}
 
-    // rewind 12 characters
-    if (buttons & BUTTON_UP) {
-    prevField = true;
-    }
-    
-    // advance 12 characters
-    if (buttons & BUTTON_DOWN) {
-    nextField = true;
-    }
-    
+    // advance one field
+    if (buttons & BUTTON_DOWN) {nextField = true;}
+
     // move back one card
-    if (buttons & BUTTON_LEFT) {
-    prevCard = true;
-    }
-    
+    if (buttons & BUTTON_LEFT) {prevCard = true;}
+
     // move forward one card
-    if (buttons & BUTTON_RIGHT) {
-    nextCard = true;
-    }
+    if (buttons & BUTTON_RIGHT) {nextCard = true;}
 
     // bonus button
     // mode switching? turn on debug 
-    if (buttons & BUTTON_SELECT) {
-      toggleDebug = true;
-    } 
-  buttonPressed = true;  
+    if (buttons & BUTTON_SELECT) {toggleDebug = true;}
+
+  // set flag for user input 
+  buttonPressed = true;   
   }
 
-  //functions
+  //functions activated by buttons
 
   //was there input from buttons?
   if (buttonPressed) {
@@ -140,9 +132,8 @@ int lastColumn = offset + displayColumns;
     }
     buttonPressed = false;
   }
-  
 
-  //if writeDisplay then
+  //if writeDisplay then update the display based on display flags
   if (writeDisplay) {
     lcd.clear();
   
@@ -176,7 +167,7 @@ int lastColumn = offset + displayColumns;
 
   writeDisplay = false;
   }
-// end of loop()
+// end of main loop()
 }  
 
 //serialevent
@@ -186,6 +177,7 @@ int lastColumn = offset + displayColumns;
  time loop() runs, so using delay inside loop can delay
  response.  Multiple bytes of data may be available.
  */
+
 void serialEvent2() {
   while (Serial2.available()) {
     
@@ -193,9 +185,8 @@ void serialEvent2() {
     char inChar = (char)Serial2.read();
     // add it to the inputString:
     inputString += inChar;
-   }
-   } 
-
+  }
+} 
 
 void serialEvent() {
   while (Serial.available()) {
@@ -210,13 +201,8 @@ void serialEvent() {
       Serial.print("\n");
       Serial.print(inputString.length());
       Serial.print("\n");
-      }
+    }
 
-   }
-   } 
-
-
-
-
-    
+  }
+} 
     
