@@ -58,7 +58,7 @@ void loop() {
 int lastColumn = offset + displayColumns;
 
 
-  // has ther been input from serial?
+  // has there been input from serial?
   if (inputString.length() > inputStringLength) {
     staleDisplay = true;
     inputStringLength = inputString.length();
