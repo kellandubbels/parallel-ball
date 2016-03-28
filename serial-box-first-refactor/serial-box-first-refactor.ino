@@ -23,15 +23,20 @@ Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 boolean printDebug = true;       // begin with debug enabled
 boolean printLineOne = true;
 boolean printLineTwo = false;
-String inputString = "";         // a string to hold incoming data from serial port 2
+String inputString = "";         // a string to hold incoming data from serial port 1
 String lineOne = "Waiting";      // initialize first display line
 String lineTwo = "Waiting";      // initialize second display line
 boolean writeDisplay = true;     // initiate first display write
 boolean prevField = false; boolean nextField = false; boolean prevCard = false; boolean nextCard = false;
 boolean toggleDebug; 
 boolean buttonPressed;           // interface flag set of button event
+int lastRefresh = 0;
+boolean staleDisplay;
 int offset = 0;                  // initial offset to display data from
 int displayColumns = 16;         // number of columns to display per row
+
+int inputStringLength;
+
 
 //setup
 
@@ -39,7 +44,7 @@ void setup() {
   // initialize serial console (this is for debugging with a computer)
   Serial.begin(9600);
   // initialize the serial input (this is the data we are interested in)
-  Serial2.begin(9600);
+  Serial1.begin(9600);
   // reserve 1024 bytes for the inputString:
   inputString.reserve(1024);
 
@@ -50,8 +55,27 @@ void setup() {
 
 //main loop
 void loop() {
-int inputStringLength = inputString.length();
 int lastColumn = offset + displayColumns;
+
+
+  // has ther been input from serial?
+  if (inputString.length() > inputStringLength) {
+    staleDisplay = true;
+    inputStringLength = inputString.length();
+  }
+  
+  // on staleDisplay, wait for serial to go idle, wait 300 repetitions
+  if ((Serial1.available() == false) & staleDisplay ) {
+    lastRefresh = lastRefresh + 1;
+    // 500 is minimum value for 9600 baud to work reliably
+    // 1000 is a nice balance of response and flicker
+      if (lastRefresh > 300) {
+        writeDisplay = true;
+        lastRefresh = 0 ; 
+        staleDisplay = false;  
+      }
+  }
+
 
   //scan the buttons for input, set flag on input
   uint8_t buttons = lcd.readButtons();
@@ -73,13 +97,13 @@ int lastColumn = offset + displayColumns;
     if (buttons & BUTTON_SELECT) {toggleDebug = true;}
 
   // set flag for user input 
-  buttonPressed = true;   
-  }
+  //buttonPressed = true;   
+  //}
 
   //functions activated by buttons
 
   //was there input from buttons?
-  if (buttonPressed) {
+  //if (buttonPressed) {
    
     // rewind 16 characters
     if (prevField) {
@@ -130,7 +154,8 @@ int lastColumn = offset + displayColumns;
     toggleDebug = false;
     writeDisplay = true;  
     }
-    buttonPressed = false;
+    
+    //buttonPressed = false;
   }
 
   //if writeDisplay then update the display based on display flags
@@ -160,11 +185,16 @@ int lastColumn = offset + displayColumns;
       lcd.setBacklight(RED);
       lcd.setCursor(0, 1); lcd.print(inputStringLength);
       lcd.setCursor(4, 1); lcd.print(offset);
-      lcd.setCursor(8, 1); lcd.print((int)(offset / 60));
-      lcd.setCursor(12,1); lcd.print((offset % 60));
+      lcd.setCursor(8, 1); lcd.print((int)(offset / 64));
+      lcd.setCursor(12,1); lcd.print((offset % 64));
     //  lcd.setCursor(12,0); lcd.print(millis()/1000);
     }
 
+
+
+
+  
+  staleDisplay = false; 
   writeDisplay = false;
   }
 // end of main loop()
@@ -178,15 +208,16 @@ int lastColumn = offset + displayColumns;
  response.  Multiple bytes of data may be available.
  */
 
-void serialEvent2() {
-  while (Serial2.available()) {
-    
+void serialEvent1() {
+  while (Serial1.available()) {
     // get the new byte:
-    char inChar = (char)Serial2.read();
+    char inChar = (char)Serial1.read();
     // add it to the inputString:
     inputString += inChar;
   }
-} 
+  
+}
+
 
 void serialEvent() {
   while (Serial.available()) {
@@ -205,4 +236,5 @@ void serialEvent() {
 
   }
 } 
+
     
